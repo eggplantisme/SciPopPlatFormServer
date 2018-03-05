@@ -12,7 +12,7 @@ public class SciPopInfo {
 	private String writterName;
 	private String content;
 	private Date lastTime;
-
+	private int baseId;
 	/**
 	 * @return the infoId
 	 */
@@ -81,5 +81,19 @@ public class SciPopInfo {
 	 */
 	public void setLastTime(Date lastTime) {
 		this.lastTime = lastTime;
+	}
+
+	/**
+	 * @return the baseId
+	 */
+	public int getBaseId() {
+		return baseId;
+	}
+
+	/**
+	 * @param baseId the baseId to set
+	 */
+	public void setBaseId(int baseId) {
+		this.baseId = baseId;
 	}
 }

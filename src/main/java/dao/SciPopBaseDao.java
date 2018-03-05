@@ -10,8 +10,9 @@ public class SciPopBaseDao extends DataBuild {
 			+ "address TEXT, "
 			+ "contactNumber varchar(1000), "
 			+ "baseInfo TEXT"
-			+ "basename TEXT)";
-	String add_SciPopBase = "insert into SciPopBase(address, contactNumber, baseInfo, basename) values (?, ?, ?, ?)";
+			+ "basename TEXT"
+			+ "foreign key(baseAdminName) references User(username))";
+	String add_SciPopBase = "insert into SciPopBase(address, contactNumber, baseInfo, basename, baseAdminName) values (?, ?, ?, ?, ?)";
 	String get_SciPopBase_ById = "select * from SciPopBase where baseId = ?";
 	String update_ScipopBase_ById = "update SciPopBase set address = ?, contactNumber = ?, baseInfo = ?, basename = ? where baseId = ?";
 	String delete_SciPopBase_ById = "delete from SciPopBase where baseId = ?";
@@ -41,6 +42,7 @@ public class SciPopBaseDao extends DataBuild {
 			ps.setString(2, sciPopBase.getContactNumber());
 			ps.setString(3, sciPopBase.getBaseInfo());
 			ps.setString(4, sciPopBase.getBaseName());
+			ps.setString(5, sciPopBase.getBaseAdminName());
 			ps.executeUpdate();
 		} catch (SQLException e) {
 			e.printStackTrace();

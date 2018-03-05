@@ -6,6 +6,7 @@ public class SciPopBase {
 	private String contactNumber;
 	private String baseInfo;
 	private String baseName;
+	private String baseAdminName;
 
 	/**
 	 * @return the baseId
@@ -75,5 +76,19 @@ public class SciPopBase {
 	 */
 	public void setBaseName(String baseName) {
 		this.baseName = baseName;
+	}
+
+	/**
+	 * @return the baseAdminName
+	 */
+	public String getBaseAdminName() {
+		return baseAdminName;
+	}
+
+	/**
+	 * @param baseAdminName the baseAdminName to set
+	 */
+	public void setBaseAdminName(String baseAdminName) {
+		this.baseAdminName = baseAdminName;
 	}
 }

@@ -11,10 +11,11 @@ public class SciPopInfoDao extends DataBuild {
 	PreparedStatement cps = null;
 	String create_SciPopInfo_table = "create table if not exists SciPopInfo(infoId int AUTO_INCREMENT primary key, "
 			+ "title varchar(1000), "
-			+ "writtername varchar(1000), "
+			+ "foreign key(writtername) rederences User(username), "
 			+ "content TEXT, "
-			+ "time DATE)";
-	String add_SciPopInfo = "insert into SciPopInfo(title, writtername, content, time) values (?, ?, ?, ?)";
+			+ "time DATE"
+			+ "foreign key(baseId) references SciPopBase(baseId))";
+	String add_SciPopInfo = "insert into SciPopInfo(title, writtername, content, time, baseId) values (?, ?, ?, ?, ?)";
 	String get_SciPopInfo_byId = "select * from SciPopInfo where infoId = ?";
 	String update_SciPopInfo_byId = "update SciPopInfo set title = ?, writtername = ?, content = ?, time = ? where infoId = ?";
 	String delete_SciPopInfo_byId = "delete from SciPopInfo where infoId = ?";
@@ -44,6 +45,7 @@ public class SciPopInfoDao extends DataBuild {
 			ps.setString(2, sciPopInfo.getWritterName());
 			ps.setString(3, sciPopInfo.getContent());
 			ps.setDate(4, sciPopInfo.getLastTime());
+			ps.setInt(5,  sciPopInfo.getBaseId());
 			ps.executeUpdate();
 		} catch (SQLException e) {
 			e.printStackTrace();
