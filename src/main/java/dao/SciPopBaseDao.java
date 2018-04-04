@@ -2,15 +2,20 @@ package dao;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
 import bean.SciPopBase;
+import bean.SciPopInfo;
 
 public class SciPopBaseDao extends DataBuild {
 	PreparedStatement cps = null;
 	String create_SciPopBase_table = "create table if not exists SciPopBase(baseId int AUTO_INCREMENT primary key, "
 			+ "address TEXT, "
 			+ "contactNumber varchar(1000), "
-			+ "baseInfo TEXT"
-			+ "basename TEXT"
+			+ "baseInfo TEXT, "
+			+ "basename TEXT, "
+			+ "baseAdminName varchar(1000), "
 			+ "foreign key(baseAdminName) references User(username))";
 	String add_SciPopBase = "insert into SciPopBase(address, contactNumber, baseInfo, basename, baseAdminName) values (?, ?, ?, ?, ?)";
 	String get_SciPopBase_ById = "select * from SciPopBase where baseId = ?";
@@ -53,6 +58,37 @@ public class SciPopBaseDao extends DataBuild {
 		return sciPopBase.getBaseName();
 	}
 
+	
+	String getAllSciBaseInfo = "select * from SciPopBase";
+	/**
+	 * 获得科普基地的列表
+	 * @return
+	 */
+	public List<SciPopBase> getListSciPopBase() {
+		openCon();
+		ArrayList<SciPopBase> sciPopBases = new ArrayList<SciPopBase>();
+		try {
+			ps=con.prepareStatement(getAllSciBaseInfo);
+			rs = ps.executeQuery();
+			while (rs.next()) {
+				SciPopBase sciPopBase = new SciPopBase();
+				sciPopBase.setAddress(rs.getString("address"));
+				sciPopBase.setBaseAdminName(rs.getString("baseAdminName"));
+				sciPopBase.setBaseId(rs.getInt("baseId"));
+				sciPopBase.setBaseInfo(rs.getString("baseInfo"));
+				sciPopBase.setBaseName(rs.getString("basename"));
+				sciPopBase.setContactNumber(rs.getString("contactNumber"));
+				sciPopBases.add(sciPopBase);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			this.closeRs();
+			this.closePs();
+			this.closeCon();
+		}
+		return sciPopBases;
+	}
 	/**
 	 * 根据id获得科普基地信息
 	 * @param baseId
@@ -128,5 +164,33 @@ public class SciPopBaseDao extends DataBuild {
 			this.closeCon();
 		}
 		return bool;
+	}
+	
+	String get_SciPopBases_byName = "select * from SciPopBase where baseAdminName = ?";
+	public List<SciPopBase> getListSciPopBaseByName(String name) {
+		openCon();
+		ArrayList<SciPopBase> sciPopBases = new ArrayList<SciPopBase>();
+		try {
+			ps=con.prepareStatement(get_SciPopBases_byName);
+			ps.setString(1, name);
+			rs = ps.executeQuery();
+			while (rs.next()) {
+				SciPopBase sciPopBase = new SciPopBase();
+				sciPopBase.setAddress(rs.getString("address"));
+				sciPopBase.setBaseAdminName(name);
+				sciPopBase.setBaseId(rs.getInt("baseId"));
+				sciPopBase.setBaseInfo(rs.getString("baseInfo"));
+				sciPopBase.setBaseName(rs.getString("basename"));
+				sciPopBase.setContactNumber(rs.getString("contactNumber"));
+				sciPopBases.add(sciPopBase);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			this.closeRs();
+			this.closePs();
+			this.closeCon();
+		}
+		return sciPopBases;
 	}
 }

@@ -22,10 +22,15 @@ import dao.SciPopBaseDao;
 import dao.SciPopInfoDao;
 import dao.TempUserDao;
 import dao.UserDao;
+import net.sf.json.JSON;
 import net.sf.json.JSONObject;
+
+
 
 @Controller
 public class GeneralController {
+	
+	
 	/**
 	 * 测试用url
 	 * @param model
@@ -33,11 +38,13 @@ public class GeneralController {
 	 */
 	@RequestMapping(value={"/index", "/"})
 	@ResponseBody
-    public Object index_jsp(Model model){
+    public Object index_jsp(Model model, HttpSession session){
         model.addAttribute("str", "Hello world");
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("get", "yes");
         jsonObject.put("satisfied", 1);
+        
+        session.setAttribute("name", "unknown");
         return jsonObject;
     }
 	/**
@@ -68,7 +75,8 @@ public class GeneralController {
 		if (!temp.equals(true)) return temp;
 		else {
 			UserDao userDao = new UserDao();
-			if (userDao.queryUserbyName(username)) {
+			//防止注册一个和管理员同名的用户
+			if (userDao.queryUserbyName(username) || username.equals(Admin.AdminName)) {
 				JSONObject result = new JSONObject();
 				result.put("repeated", "yes");
 				result.put("info", 0);
@@ -78,7 +86,7 @@ public class GeneralController {
 				user.setScore(0);
 				//不是专家会员和基地会员的注册正常通过
 				//若是则需要进入临时用户表等待审查
-				if(user.getUserclass() != 2 && user.getUserclass() != 3) {
+				if(user.getUserclass() != 1 && user.getUserclass() != 2) {
 					userDao.addUser(user);
 					JSONObject result = new JSONObject();
 					result.put("repeated", "no");
@@ -94,7 +102,7 @@ public class GeneralController {
 					tempUserDao.addUser(user);
 					JSONObject result = new JSONObject();
 					result.put("repeated", "no");
-					result.put("info", 6);
+					result.put("info", 8);
 					result.put("class", userclass);
 					return result;
 				}
@@ -177,8 +185,9 @@ public class GeneralController {
 	public Object login(User user, Model model, HttpSession session) {
 		String username = user.getUsername();
 		String password = user.getPassword();
+		int userClass = user.getUserclass();
 		//管理员用户返回临时用户列表
-		if (username == "eggplant" && password == "eggplant") {
+		if (username.equals(Admin.AdminName) && password.equals(Admin.AdminPass)) {
 			TempUserDao tempUserDao = new TempUserDao();
 			List<TempUser> tempUsers = tempUserDao.getUserList();
 			//设置session
@@ -195,22 +204,30 @@ public class GeneralController {
 				UserDao userDao = new UserDao();
 				if (!userDao.queryUserbyName(username)) {
 					JSONObject result = new JSONObject();
-					result.put("repeated", "yes");
+					result.put("repeated", "no");
 					result.put("info", 6);
 					result.put("class", userclass);
 					return result;
 				} else {
 					User temp_user = userDao.getUserbyName(username);
 					if (temp_user.getPassword().equals(password)) {
-						JSONObject result = new JSONObject();
-						result.put("repeated", "no");
-						result.put("info", 1);
-						result.put("class", userclass);
-						
-						//设置session
-						session.setAttribute("username", user.getUsername());
-						session.setAttribute("class", userclass);
-						return result;
+						if (temp_user.getUserclass() == userClass) {
+							JSONObject result = new JSONObject();
+							result.put("repeated", "no");
+							result.put("info", 1);
+							result.put("class", userclass);
+							
+							//设置session
+							session.setAttribute("username", user.getUsername());
+							session.setAttribute("class", userclass);
+							return result;
+						} else {
+							JSONObject result = new JSONObject();
+							result.put("repeated", "no");
+							result.put("info", 13);
+							result.put("class", userclass);
+							return result;
+						}
 					} else {
 						JSONObject result = new JSONObject();
 						result.put("repeated", "no");
@@ -225,6 +242,42 @@ public class GeneralController {
 	}
 	
 	/**
+	 * 获取所有专家会员列表，方便进行会员文章排序
+	 * @param model
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = {"/adminProList"}, method = RequestMethod.GET)
+	@ResponseBody
+	public Object AdminProtList(Model model, HttpSession session) {
+		if (("" + session.getAttribute("class")).equals("3")) {
+			UserDao userDao = new UserDao();
+			List<User> users = userDao.getUsersbyClass("1");
+			return users;
+		} else {
+			return null;
+		}
+	}
+	
+	/**
+	 * 获取申请列表
+	 * @param model
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = {"/adminList"}, method = RequestMethod.GET)
+	@ResponseBody
+	public Object AdminList(Model model, HttpSession session) {
+		if (("" + session.getAttribute("class")).equals("3")) {
+			TempUserDao tempUserDao = new TempUserDao();
+			List<TempUser> tempUsers = tempUserDao.getUserList();
+			return tempUsers;
+		} else {
+			return null;
+		}
+	}
+	
+	/**
 	 * 管理员同意专家或基地会员注册的函数
 	 * 返回值info意义
 	 * 0表示成功
@@ -234,23 +287,24 @@ public class GeneralController {
 	 * @param session
 	 * @return
 	 */
-	@RequestMapping(value={"/adminAgree"}, method = RequestMethod.GET)
+	@RequestMapping(value={"/adminAgree/{tempUserName}"}, method = RequestMethod.GET)
 	@ResponseBody
-	public Object AdminAgree(TempUser tempUser, Model model, HttpSession session) {
-		if ((String)session.getAttribute("class") == "3") {
-			User user = tempUser;
+	public Object AdminAgree(@PathVariable String tempUserName, Model model, HttpSession session) {
+		if (("" + session.getAttribute("class")).equals("3")) {
 			UserDao userDao = new UserDao();
-			userDao.addUser(user);
 			TempUserDao tempUserDao = new TempUserDao();
-			tempUserDao.DeleteUser(user.getUsername());
+			User user = tempUserDao.getUserbyName(tempUserName);
+			userDao.addUser(user);
+			
+			tempUserDao.DeleteUser(tempUserName);
 			JSONObject result = new JSONObject();
 			result.put("agree", "true");
-			result.put("info", 0);
+			result.put("info", 1);
 			return result;
 		} else {
 			JSONObject result = new JSONObject();
 			result.put("agree", "false");
-			result.put("info", 1);
+			result.put("info", 12);
 			return result;
 		}
 	}
@@ -265,20 +319,20 @@ public class GeneralController {
 	 * @param session
 	 * @return
 	 */
-	@RequestMapping(value={"/adminDelete"}, method = RequestMethod.GET)
+	@RequestMapping(value={"/adminDelete/{tempUserName}"}, method = RequestMethod.GET)
 	@ResponseBody
-	public Object AdminDelete(TempUser tempUser, Model model, HttpSession session) {
-		if ((String)session.getAttribute("class") == "3") {
+	public Object AdminDelete(@PathVariable String tempUserName, Model model, HttpSession session) {
+		if (("" + session.getAttribute("class")).equals("3")) {
 			TempUserDao tempUserDao = new TempUserDao();
-			tempUserDao.DeleteUser(tempUser.getUsername());
+			tempUserDao.DeleteUser(tempUserName);
 			JSONObject result = new JSONObject();
 			result.put("delete", "true");
-			result.put("info", 0);
+			result.put("info", 1);
 			return result;
 		} else {
 			JSONObject result = new JSONObject();
 			result.put("delete", "false");
-			result.put("info", 1);
+			result.put("info", 12);
 			return result;
 		}
 	}
@@ -320,6 +374,14 @@ public class GeneralController {
 		return sciPopInfo;
 	}
 	
+	@RequestMapping(value = {"/getSciPopInfos/{name}"}, method = RequestMethod.GET)
+	@ResponseBody
+	public Object getSciInfosByName(@PathVariable String name, Model model, HttpSession session) {
+		SciPopInfoDao sciPopInfoDao = new SciPopInfoDao();
+		List<SciPopInfo> sciPopInfos = sciPopInfoDao.getListSciPopInfoByName(name);
+		return sciPopInfos;
+	}
+	
 	/**
 	 * 根据session权限添加科普信息
 	 * @param sciPopInfo
@@ -336,8 +398,8 @@ public class GeneralController {
 			jsonObject.put("reason", "1");
 			return jsonObject;
 		} else {
-			String userclass = (String)session.getAttribute("class");
-			if (userclass == "1" || userclass == "3") {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("1") || userclass.equals("3")) {
 				SciPopInfoDao sciPopInfoDao = new SciPopInfoDao();
 				sciPopInfoDao.addSciPopInfo(sciPopInfo);
 				jsonObject.put("update", "yes");
@@ -367,8 +429,8 @@ public class GeneralController {
 			jsonObject.put("reason", "1");
 			return jsonObject;
 		} else {
-			String userclass = (String)session.getAttribute("class");
-			if (userclass == "1" || userclass == "3") {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("1") || userclass.equals("3")) {
 				SciPopInfoDao sciPopInfoDao = new SciPopInfoDao();
 				sciPopInfoDao.updateSciPopInfo(sciPopInfo);
 				jsonObject.put("update", "yes");
@@ -398,8 +460,8 @@ public class GeneralController {
 			jsonObject.put("reason", "1");
 			return jsonObject;
 		} else {
-			String userclass = (String)session.getAttribute("class");
-			if (userclass == "1" || userclass == "3") {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("1") || userclass.equals("3")) {
 				SciPopInfoDao sciPopInfoDao = new SciPopInfoDao();
 				sciPopInfoDao.deleteSciPopInfo(infoId);
 				jsonObject.put("update", "yes");
@@ -429,8 +491,8 @@ public class GeneralController {
 			jsonObject.put("reason", "1");
 			return jsonObject;
 		} else {
-			String userclass = (String)session.getAttribute("class");
-			if (userclass == "2" || userclass == "3") {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("2") || userclass.equals("3")) {
 				SciPopBaseDao sciPopBaseDao = new SciPopBaseDao();
 				sciPopBaseDao.addSciPopBase(sciPopBase);
 				jsonObject.put("update", "yes");
@@ -445,6 +507,36 @@ public class GeneralController {
 	}
 	
 	/**
+	 * 获取科普基地的列表
+	 * @param model
+	 * @param session
+	 * @return
+	 */
+	@RequestMapping(value = {"/getBaseList"}, method=RequestMethod.GET)
+	@ResponseBody
+	public Object getSciPopBaseList(Model model, HttpSession session) {
+		SciPopBaseDao sciPopBaseDao = new SciPopBaseDao();
+		List<JSONObject> bases = new ArrayList<JSONObject>();
+		List<SciPopBase> sciPopBases = sciPopBaseDao.getListSciPopBase();
+		for (SciPopBase sciPopBase : sciPopBases) {
+			JSONObject jsonObject = new JSONObject();
+			jsonObject.put("id", sciPopBase.getBaseId());
+			jsonObject.put("title", sciPopBase.getBaseName());
+			bases.add(jsonObject);
+		}
+		return bases;
+		
+	}
+	
+	@RequestMapping(value = {"/getSciBaseList/{name}"}, method = RequestMethod.GET)
+	@ResponseBody
+	public Object getSciBaseByName(@PathVariable String name, Model model, HttpSession session) {
+		SciPopBaseDao sciPopBaseDao = new SciPopBaseDao();
+		List<SciPopBase> sciPopBases = sciPopBaseDao.getListSciPopBaseByName(name);
+		return sciPopBases;
+	}
+	/**
+	 * 
 	 * 根据id获取科普基地信息
 	 * @param baseId
 	 * @param model
@@ -475,8 +567,8 @@ public class GeneralController {
 			jsonObject.put("reason", "1");
 			return jsonObject;
 		} else {
-			String userclass = (String)session.getAttribute("class");
-			if (userclass == "1" || userclass == "3") {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("2") || userclass.equals("3")) {
 				SciPopBaseDao sciPopBaseDao = new SciPopBaseDao();
 				sciPopBaseDao.updateSciPopBase(sciPopBase);
 				jsonObject.put("update", "yes");
@@ -506,8 +598,8 @@ public class GeneralController {
 			jsonObject.put("reason", "1");
 			return jsonObject;
 		} else {
-			String userclass = (String)session.getAttribute("class");
-			if (userclass == "1" || userclass == "3") {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("2") || userclass.equals("3")) {
 				SciPopBaseDao sciPopBaseDao = new SciPopBaseDao();
 				sciPopBaseDao.deleteSciPopBaseById(baseId);
 				jsonObject.put("update", "yes");
@@ -518,6 +610,53 @@ public class GeneralController {
 				jsonObject.put("reason", "1");
 				return jsonObject;
 			}
+		}
+	}
+	
+	@RequestMapping(value={"/addScore/{name}"}, method = RequestMethod.GET)
+	@ResponseBody
+	public Object addScore(@PathVariable String name, Model model, HttpSession session) {
+		JSONObject jsonObject = new JSONObject();
+		if(session.getAttribute("class") == null) {
+			jsonObject.put("info", 14);
+			return jsonObject;
+		} else {
+			String userclass = String.valueOf(session.getAttribute("class"));
+			if (userclass.equals("2") || userclass.equals("3")) {
+				UserDao userDao = new UserDao();
+				if (userDao.queryUserbyName(name)) {
+					User user = userDao.getUserbyName(name);
+					int score = user.getScore();
+					score++;
+					user.setScore(score);
+					userDao.UpdateUser(user);
+					
+					jsonObject.put("info", 1);
+					return jsonObject;
+				} else {
+					jsonObject.put("info", 6);
+					return jsonObject;
+				}
+				
+			} else {
+				jsonObject.put("info", 14);
+				return jsonObject;
+			}
+		}
+	}
+	@RequestMapping(value={"/getScore/{name}"}, method = RequestMethod.GET)
+	@ResponseBody
+	public Object getScore(@PathVariable String name, Model model, HttpSession session) {
+		JSONObject jsonObject = new JSONObject();
+		if(session.getAttribute("username") == null) {
+			jsonObject.put("info", 14);
+			return jsonObject;
+		} else {
+			UserDao userDao = new UserDao();
+			int score = userDao.getScore(name);
+			jsonObject.put("info", 1);
+			jsonObject.put("score", score);
+			return jsonObject;
 		}
 	}
 }

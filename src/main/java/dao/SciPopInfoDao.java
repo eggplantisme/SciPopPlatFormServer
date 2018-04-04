@@ -11,9 +11,11 @@ public class SciPopInfoDao extends DataBuild {
 	PreparedStatement cps = null;
 	String create_SciPopInfo_table = "create table if not exists SciPopInfo(infoId int AUTO_INCREMENT primary key, "
 			+ "title varchar(1000), "
-			+ "foreign key(writtername) rederences User(username), "
+			+ "writtername varchar(1000), "
+			+ "foreign key(writtername) references User(username), "
 			+ "content TEXT, "
-			+ "time DATE"
+			+ "time DATE, "
+			+ "baseId int, "
 			+ "foreign key(baseId) references SciPopBase(baseId))";
 	String add_SciPopInfo = "insert into SciPopInfo(title, writtername, content, time, baseId) values (?, ?, ?, ?, ?)";
 	String get_SciPopInfo_byId = "select * from SciPopInfo where infoId = ?";
@@ -73,6 +75,7 @@ public class SciPopInfoDao extends DataBuild {
 				temp_info.setWritterName(rs.getString("writtername"));
 				temp_info.setContent(rs.getString("content"));
 				temp_info.setLastTime(rs.getDate("time"));
+				temp_info.setBaseId(rs.getInt("baseId"));
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -164,5 +167,33 @@ public class SciPopInfoDao extends DataBuild {
 			this.closeCon();
 		}
 		return bool;
+	}
+	
+	String get_SciPopInfos_byName = "select * from SciPopInfo where writtername = ?";
+	public List<SciPopInfo> getListSciPopInfoByName(String name) {
+		openCon();
+		ArrayList<SciPopInfo> sciPopInfos = new ArrayList<SciPopInfo>();
+		try {
+			ps=con.prepareStatement(get_SciPopInfos_byName);
+			ps.setString(1, name);
+			rs = ps.executeQuery();
+			while (rs.next()) {
+				SciPopInfo sciPopInfo = new SciPopInfo();
+				sciPopInfo.setInfoId(rs.getInt("infoId"));
+				sciPopInfo.setContent(rs.getString("content"));
+				sciPopInfo.setTitle(rs.getString("title"));
+				sciPopInfo.setLastTime(rs.getDate("time"));
+				sciPopInfo.setWritterName(rs.getString("writtername"));
+				sciPopInfo.setBaseId(rs.getInt("baseId"));
+				sciPopInfos.add(sciPopInfo);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			this.closeRs();
+			this.closePs();
+			this.closeCon();
+		}
+		return sciPopInfos;
 	}
 }

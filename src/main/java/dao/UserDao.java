@@ -2,6 +2,8 @@ package dao;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import bean.User;
 
@@ -173,4 +175,56 @@ public class UserDao extends DataBuild {
 		}
 		return bool;
 	}
+	
+	String get_user_byClass = "select * from User where userclass=?";
+	public List<User> getUsersbyClass(String userclass){
+		openCon();
+		List<User> users = new ArrayList<User>();
+		try {
+			
+			ps=con.prepareStatement(get_user_byClass);
+			ps.setString(1, userclass);
+			rs = ps.executeQuery();
+			while(rs.next()){
+				User user = new User();
+				user.setUsername(rs.getString("username"));
+				user.setPassword(rs.getString("password"));
+				user.setPhone(rs.getString("phone"));
+				user.setScore(rs.getInt("score"));
+				user.setUserclass(rs.getInt("userclass"));
+				users.add(user);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			this.closeRs();
+			this.closePs();
+			this.closeCon();
+		}
+		return users;
+	}
+	
+	String getScore = "select score from User where username =?";
+	public int getScore(String username){
+		openCon();
+		int score = 0;
+		try {
+			ps=con.prepareStatement(getScore);
+			ps.setString(1, username);
+			rs = ps.executeQuery();
+			while(rs.next()){
+				score = rs.getInt("score");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			this.closeRs();
+			this.closePs();
+			this.closeCon();
+		}
+		return score;
+	}
+	
+
+	
 }
